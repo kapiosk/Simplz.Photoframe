@@ -1,4 +1,7 @@
 import os
+import threading
+import time
+import random
 from flask import Flask, render_template, request, redirect, url_for, session, abort
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -11,6 +14,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.secret_key = os.environ.get('PHOTOFRAME_SECRET_KEY', 'change_this_secret')
 
 PHOTOFRAME_PASSWORD = os.environ.get('PHOTOFRAME_PASSWORD', 'changeme')
+PRINT_INTERVAL = int(os.environ.get('PHOTOFRAME_PRINT_INTERVAL', 10))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -65,6 +69,23 @@ def delete_file(filename):
     if os.path.exists(path):
         os.remove(path)
     return redirect(url_for('index'))
+
+def background_image_printer():
+    while True:
+        try:
+            images = os.listdir(UPLOAD_FOLDER)
+            images = [img for img in images if allowed_file(img)]
+            if images:
+                filename = random.choice(images)
+                print(f"[Photoframe] Selected image: {filename}")
+            else:
+                print("[Photoframe] No images found in uploads folder.")
+        except Exception as e:
+            print(f"[Photoframe] Error in background worker: {e}")
+        time.sleep(PRINT_INTERVAL)
+
+# Start background worker
+threading.Thread(target=background_image_printer, daemon=True).start()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5053)
