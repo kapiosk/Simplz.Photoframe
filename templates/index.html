@@ -19,14 +19,54 @@
             padding: 2px 5px;
             cursor: pointer;
         }
+        .drop-area {
+            border: 2px dashed #aaa;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .drop-area.dragover {
+            background: #f0f8ff;
+            border-color: #0078d7;
+            color: #0078d7;
+        }
+        .hidden-input {
+            display: none;
+        }
+        .progress {
+            margin: 10px 0;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #0078d7;
+            width: 0;
+            transition: width 0.2s;
+        }
+        .error-message {
+            color: red;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
     <h1>Image Manager</h1>
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="file" required>
-        <button type="submit">Upload</button>
-    </form>
+    <div class="drop-area" id="drop-area">
+        <p>Drag & drop images here, or <span style="color:#0078d7;cursor:pointer;" id="browse-link">browse</span> to upload</p>
+        <form id="upload-form" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" id="file-input" class="hidden-input" accept="image/*">
+        </form>
+        <div class="progress" id="progress" style="display:none;">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="error-message" id="error-message"></div>
+    </div>
 
     <div class="gallery">
         {% for image in images %}
@@ -38,5 +78,76 @@
         </div>
         {% endfor %}
     </div>
+    <script>
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const browseLink = document.getElementById('browse-link');
+    const progress = document.getElementById('progress');
+    const progressBar = document.getElementById('progress-bar');
+    const errorMessage = document.getElementById('error-message');
+
+    // Open file dialog on click
+    browseLink.addEventListener('click', () => fileInput.click());
+
+    // Drag events
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropArea.classList.add('dragover');
+        });
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropArea.classList.remove('dragover');
+        });
+    });
+
+    // Handle drop
+    dropArea.addEventListener('drop', e => {
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            uploadFile(files[0]);
+        }
+    });
+
+    // Handle file input
+    fileInput.addEventListener('change', e => {
+        if (fileInput.files.length) {
+            uploadFile(fileInput.files[0]);
+        }
+    });
+
+    function uploadFile(file) {
+        errorMessage.textContent = '';
+        progress.style.display = 'block';
+        progressBar.style.width = '0';
+        const formData = new FormData();
+        formData.append('file', file);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/');
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = (e.loaded / e.total) * 100;
+                progressBar.style.width = percent + '%';
+            }
+        };
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                window.location.reload();
+            } else {
+                errorMessage.textContent = 'Upload failed. Please try again.';
+                progress.style.display = 'none';
+            }
+        };
+        xhr.onerror = function() {
+            errorMessage.textContent = 'Upload failed. Please try again.';
+            progress.style.display = 'none';
+        };
+        xhr.send(formData);
+    }
+    </script>
 </body>
 </html>
