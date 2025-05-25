@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Manager</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .gallery { display: flex; flex-wrap: wrap; gap: 10px; }
+        .image-box { border: 1px solid #ccc; padding: 5px; position: relative; }
+        img { max-width: 150px; display: block; }
+        .delete-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: red;
+            color: white;
+            border: none;
+            font-size: 12px;
+            padding: 2px 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Image Manager</h1>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">Upload</button>
+    </form>
+
+    <div class="gallery">
+        {% for image in images %}
+        <div class="image-box">
+            <form method="post" action="{{ url_for('delete_file', filename=image) }}">
+                <button type="submit" class="delete-btn">X</button>
+            </form>
+            <img src="{{ url_for('static', filename='uploads/' + image) }}" alt="{{ image }}">
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
