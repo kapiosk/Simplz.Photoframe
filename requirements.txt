@@ -1,1 +1,4 @@
 flask
+Werkzeug
+pillow
+inky

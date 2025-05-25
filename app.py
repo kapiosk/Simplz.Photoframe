@@ -5,6 +5,8 @@ import random
 from flask import Flask, render_template, request, redirect, url_for, session, abort
 from werkzeug.utils import secure_filename
 from functools import wraps
+from PIL import Image
+from inky.auto import auto
 
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -71,13 +73,23 @@ def delete_file(filename):
     return redirect(url_for('index'))
 
 def background_image_printer():
+    inky = auto(ask_user=True, verbose=True)
+    saturation = float(os.environ.get('PHOTOFRAME_SATURATION', 0.5))
     while True:
         try:
             images = os.listdir(UPLOAD_FOLDER)
             images = [img for img in images if allowed_file(img)]
             if images:
                 filename = random.choice(images)
-                print(f"[Photoframe] Selected image: {filename}")
+                image_path = os.path.join(UPLOAD_FOLDER, filename)
+                image = Image.open(image_path)
+                resizedimage = image.resize(inky.resolution)
+                try:
+                    inky.set_image(resizedimage, saturation=saturation)
+                except TypeError:
+                    inky.set_image(resizedimage)
+                inky.show()
+                print(f"[Photoframe] Displayed image: {filename}")
             else:
                 print("[Photoframe] No images found in uploads folder.")
         except Exception as e:
