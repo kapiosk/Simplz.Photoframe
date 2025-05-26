@@ -112,35 +112,35 @@ if not app.debug:
     led = chip.line_offset_from_id(LED_PIN)
     gpio = chip.request_lines(consumer="inky", config={led: gpiod.LineSettings(direction=Direction.OUTPUT, bias=Bias.DISABLED)})
     gpio.set_value(led, Value.ACTIVE)
-# OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
-# line_config = dict.fromkeys(OFFSETS, INPUT)
-# request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
+    OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
+    line_config = dict.fromkeys(OFFSETS, INPUT)
+    button_request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
 
-# def handle_button(event):
-#     index = OFFSETS.index(event.line_offset)
-#     label = LABELS[index]
-#     print(f"Button press detected: {label}")
-#     if label == "A":
-#         print("Disabling WiFi (wlan0 down)...")
-#         os.system("sudo ifconfig wlan0 down")
-#     elif label == "B":
-#         print("Enabling WiFi (wlan0 up)...")
-#         os.system("sudo ifconfig wlan0 up")
-#     elif label == "C":
-#         with image_lock:
-#             image_index["idx"] -= 2
-#             print("Previous image requested.")
-#             image_update_event.set()
-#     elif label == "D":
-#         with image_lock:
-#             print("Next image requested.")
-#             image_update_event.set()
+    def handle_button(event):
+        index = OFFSETS.index(event.line_offset)
+        label = LABELS[index]
+        print(f"Button press detected: {label}")
+        if label == "A":
+            print("Disabling WiFi (wlan0 down)...")
+            os.system("sudo ifconfig wlan0 down")
+        elif label == "B":
+            print("Enabling WiFi (wlan0 up)...")
+            os.system("sudo ifconfig wlan0 up")
+        elif label == "C":
+            with image_lock:
+                image_index["idx"] -= 2
+                print("Previous image requested.")
+                image_update_event.set()
+        elif label == "D":
+            with image_lock:
+                print("Next image requested.")
+                image_update_event.set()
 
-# def button_event_thread():
-#     while True:
-#         for event in request.read_edge_events():
-#             handle_button(event)
-# threading.Thread(target=button_event_thread, daemon=True).start()
+    def button_event_thread():
+        while True:
+            for event in button_request.read_edge_events():
+                handle_button(event)
+    threading.Thread(target=button_event_thread, daemon=True).start()
 
 def background_image_printer():
     if app.debug:
