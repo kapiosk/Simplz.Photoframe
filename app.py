@@ -123,12 +123,11 @@ def handle_button(event):
         os.system("sudo ifconfig wlan0 up")
     elif label == "C":
         with image_lock:
-            image_index["idx"] -= 1
+            image_index["idx"] -= 2
             print("Previous image requested.")
             image_update_event.set()
     elif label == "D":
         with image_lock:
-            image_index["idx"] += 1
             print("Next image requested.")
             image_update_event.set()
 
@@ -151,12 +150,10 @@ def background_image_printer():
             with image_lock:
                 if images:
                     # Clamp index to valid range
-                    image_index["idx"] %= len(images)
+                    image_index["idx"] = (image_index["idx"] + 1) % len(images)
                     filename = images[image_index["idx"]]
                     image_path = os.path.join(UPLOAD_FOLDER, filename)
                     displayer.display(image_path, filename)
-                    # Only auto-advance if not just changed by button
-                    image_index["idx"] = (image_index["idx"] + 1) % len(images)
                 else:
                     print("[Photoframe] No images found in uploads folder.")
                     image_index["idx"] = 0
