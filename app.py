@@ -98,16 +98,19 @@ class InkyImageDisplayer():
 if not app.debug:
     import gpiod
     import gpiodevice
-    from gpiod.line import Bias, Direction, Edge
+    from gpiod.line import Bias, Direction, Edge, Value
     # Button GPIOs (BCM numbering)
     SW_A = 5
     SW_B = 6
     SW_C = 25
     SW_D = 24
+    LED_PIN = 13
     BUTTONS = [SW_A, SW_B, SW_C, SW_D]
     LABELS = ["A", "B", "C", "D"]
     INPUT = gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.PULL_UP, edge_detection=Edge.FALLING)
     chip = gpiodevice.find_chip_by_platform()
+    led = chip.line_offset_from_id(LED_PIN)
+    gpio = chip.request_lines(consumer="inky", config={led: gpiod.LineSettings(direction=Direction.OUTPUT, bias=Bias.DISABLED)})
     OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
     line_config = dict.fromkeys(OFFSETS, INPUT)
     request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
@@ -119,9 +122,11 @@ if not app.debug:
         if label == "A":
             print("Disabling WiFi (wlan0 down)...")
             os.system("sudo ifconfig wlan0 down")
+            gpio.set_value(led, Value.INACTIVE)
         elif label == "B":
             print("Enabling WiFi (wlan0 up)...")
             os.system("sudo ifconfig wlan0 up")
+            gpio.set_value(led, Value.ACTIVE)
         elif label == "C":
             with image_lock:
                 image_index["idx"] -= 2
