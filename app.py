@@ -98,7 +98,7 @@ class InkyImageDisplayer():
 if not app.debug:
     import gpiod
     import gpiodevice
-    from gpiod.line import Bias, Direction, Edge
+    from gpiod.line import Bias, Direction, Edge, Value
     # Button GPIOs (BCM numbering)
     SW_A = 5
     SW_B = 6
@@ -111,6 +111,7 @@ if not app.debug:
     chip = gpiodevice.find_chip_by_platform()
     led = chip.line_offset_from_id(LED_PIN)
     gpio = chip.request_lines(consumer="inky", config={led: gpiod.LineSettings(direction=Direction.OUTPUT, bias=Bias.DISABLED)})
+    gpio.set_value(led, Value.ACTIVE)
 # OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
 # line_config = dict.fromkeys(OFFSETS, INPUT)
 # request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
