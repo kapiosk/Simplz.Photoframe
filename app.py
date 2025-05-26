@@ -1,11 +1,13 @@
 import os
 import threading
+import json
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.utils import secure_filename
 from functools import wraps
 
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+SEQUENCE_FILE = os.path.join('static', 'sequence.json')
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -23,6 +25,33 @@ image_update_event = threading.Event()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Sequence loading/saving helpers
+
+def load_sequence():
+    if os.path.exists(SEQUENCE_FILE):
+        with open(SEQUENCE_FILE, 'r', encoding='utf-8') as f:
+            try:
+                return json.load(f)
+            except Exception:
+                return []
+    return []
+
+def save_sequence(seq):
+    with open(SEQUENCE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(seq, f, indent=2)
+
+def get_image_sequence():
+    all_images = [img for img in os.listdir(UPLOAD_FOLDER) if allowed_file(img)]
+    all_images_set = set(all_images)
+    sequence = []
+    json_seq = load_sequence()
+    for img in json_seq:
+        if img in all_images_set:
+            sequence.append(img)
+            all_images_set.remove(img)
+    sequence.extend(sorted(all_images_set))
+    return sequence
 
 # Auth decorator
 def login_required(f):
@@ -73,6 +102,19 @@ def delete_file(filename):
     if os.path.exists(path):
         os.remove(path)
     return redirect(url_for('index'))
+
+@app.route('/api/sequence', methods=['GET'])
+@login_required
+def api_get_sequence():
+    return {"sequence": get_image_sequence()}
+
+@app.route('/api/sequence', methods=['POST'])
+@login_required
+def api_save_sequence():
+    data = request.get_json()
+    seq = data.get('sequence', [])
+    save_sequence(seq)
+    return {"ok": True}
 
 class PrintImageDisplayer():
     def display(self, image_path, filename):
@@ -151,11 +193,9 @@ def background_image_printer():
         displayer = InkyImageDisplayer()
     while True:
         try:
-            images = [img for img in os.listdir(UPLOAD_FOLDER) if allowed_file(img)]
-            images.sort()
+            images = get_image_sequence()
             with image_lock:
                 if images:
-                    # Clamp index to valid range
                     image_index["idx"] = (image_index["idx"] + 1) % len(images)
                     filename = images[image_index["idx"]]
                     image_path = os.path.join(UPLOAD_FOLDER, filename)

@@ -57,6 +57,18 @@
 </head>
 <body>
     <h1>Image Manager</h1>
+    <div style="margin-bottom: 20px;">
+        <button onclick="showSequenceEditor()">Edit Sequence</button>
+    </div>
+    <div id="sequence-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#0008; z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; padding:2em; border-radius:8px; min-width:300px; max-width:90vw; max-height:90vh; overflow:auto;">
+            <h2>Edit Image Sequence</h2>
+            <ul id="sortable-sequence" style="list-style:none; padding:0; margin:0 0 1em 0;"></ul>
+            <button onclick="saveSequence()">Save Sequence</button>
+            <button onclick="closeSequenceEditor()">Cancel</button>
+            <div id="save-status" style="margin-top:1em;"></div>
+        </div>
+    </div>
     <div class="drop-area" id="drop-area">
         <p>Drag & drop images here, or <span style="color:#0078d7;cursor:pointer;" id="browse-link">browse</span> to upload</p>
         <form id="upload-form" method="post" enctype="multipart/form-data">
@@ -78,6 +90,7 @@
         </div>
         {% endfor %}
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
     const dropArea = document.getElementById('drop-area');
     const fileInput = document.getElementById('file-input');
@@ -109,23 +122,25 @@
     dropArea.addEventListener('drop', e => {
         const files = e.dataTransfer.files;
         if (files.length) {
-            uploadFile(files[0]);
+            uploadFiles(files);
         }
     });
 
     // Handle file input
     fileInput.addEventListener('change', e => {
         if (fileInput.files.length) {
-            uploadFile(fileInput.files[0]);
+            uploadFiles(fileInput.files);
         }
     });
 
-    function uploadFile(file) {
+    function uploadFiles(files) {
         errorMessage.textContent = '';
         progress.style.display = 'block';
         progressBar.style.width = '0';
         const formData = new FormData();
-        formData.append('file', file);
+        for (let i = 0; i < files.length; i++) {
+            formData.append('file', files[i]);
+        }
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/');
         xhr.upload.onprogress = function(e) {
@@ -147,6 +162,57 @@
             progress.style.display = 'none';
         };
         xhr.send(formData);
+    }
+
+    // Sequence editor logic
+    function showSequenceEditor() {
+        fetch('/api/sequence').then(r => r.json()).then(data => {
+            const list = document.getElementById('sortable-sequence');
+            list.innerHTML = '';
+            data.sequence.forEach(img => {
+                const li = document.createElement('li');
+                li.setAttribute('data-img', img);
+                li.style.display = 'flex';
+                li.style.alignItems = 'center';
+                li.style.gap = '1em';
+                li.style.padding = '0.5em 0';
+                li.style.borderBottom = '1px solid #eee';
+                const imageElem = document.createElement('img');
+                imageElem.src = '/static/uploads/' + img;
+                imageElem.alt = img;
+                imageElem.style.maxWidth = '80px';
+                imageElem.style.maxHeight = '60px';
+                imageElem.style.objectFit = 'cover';
+                const nameElem = document.createElement('span');
+                nameElem.textContent = img;
+                nameElem.style.fontSize = '0.9em';
+                li.appendChild(imageElem);
+                li.appendChild(nameElem);
+                list.appendChild(li);
+            });
+            document.getElementById('sequence-modal').style.display = 'flex';
+            if (!window.sortableInit) {
+                Sortable.create(list, {animation: 150});
+                window.sortableInit = true;
+            }
+        });
+    }
+    function closeSequenceEditor() {
+        document.getElementById('sequence-modal').style.display = 'none';
+        document.getElementById('save-status').textContent = '';
+    }
+    function saveSequence() {
+        const list = document.getElementById('sortable-sequence');
+        const imgs = Array.from(list.children).map(li => li.getAttribute('data-img'));
+        fetch('/api/sequence', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({sequence: imgs})
+        }).then(r => r.json()).then(data => {
+            document.getElementById('save-status').textContent = data.ok ? 'Sequence saved!' : 'Error saving sequence.';
+            setTimeout(closeSequenceEditor, 1000);
+            setTimeout(() => window.location.reload(), 1200);
+        });
     }
     </script>
 </body>
