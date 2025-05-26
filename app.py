@@ -98,13 +98,12 @@ class InkyImageDisplayer():
 if not app.debug:
     import gpiod
     import gpiodevice
-    from gpiod.line import Bias, Direction, Edge, Value
+    from gpiod.line import Bias, Direction, Edge
     # Button GPIOs (BCM numbering)
     SW_A = 5
     SW_B = 6
     SW_C = 25
     SW_D = 24
-    LED_PIN = 13
     BUTTONS = [SW_A, SW_B, SW_C, SW_D]
     LABELS = ["A", "B", "C", "D"]
     INPUT = gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.PULL_UP, edge_detection=Edge.FALLING)
