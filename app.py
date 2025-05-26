@@ -57,11 +57,12 @@ def index():
     if request.method == 'POST':
         if 'file' not in request.files:
             return redirect(request.url)
-        file = request.files['file']
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return redirect(url_for('index'))
+        files = request.files.getlist('file')
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return redirect(url_for('index'))
     images = os.listdir(app.config['UPLOAD_FOLDER'])
     return render_template('index.html', images=images)
 
