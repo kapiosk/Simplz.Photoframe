@@ -94,49 +94,49 @@ class InkyImageDisplayer():
         self.inky.show()
         print(f"[Photoframe] Displayed image: {filename}")
 
-# # Only load GPIO/button functionality in production
-# if not app.debug:
-#     import gpiod
-#     import gpiodevice
-#     from gpiod.line import Bias, Direction, Edge
-#     # Button GPIOs (BCM numbering)
-#     SW_A = 5
-#     SW_B = 6
-#     SW_C = 25
-#     SW_D = 24
-#     BUTTONS = [SW_A, SW_B, SW_C, SW_D]
-#     LABELS = ["A", "B", "C", "D"]
-#     INPUT = gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.PULL_UP, edge_detection=Edge.FALLING)
-#     chip = gpiodevice.find_chip_by_platform()
-#     OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
-#     line_config = dict.fromkeys(OFFSETS, INPUT)
-#     request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
+# Only load GPIO/button functionality in production
+if not app.debug:
+    import gpiod
+    import gpiodevice
+    from gpiod.line import Bias, Direction, Edge
+    # Button GPIOs (BCM numbering)
+    SW_A = 5
+    SW_B = 6
+    SW_C = 25
+    SW_D = 24
+    BUTTONS = [SW_A, SW_B, SW_C, SW_D]
+    LABELS = ["A", "B", "C", "D"]
+    INPUT = gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.PULL_UP, edge_detection=Edge.FALLING)
+    chip = gpiodevice.find_chip_by_platform()
+    OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
+    line_config = dict.fromkeys(OFFSETS, INPUT)
+    request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
 
-#     def handle_button(event):
-#         index = OFFSETS.index(event.line_offset)
-#         label = LABELS[index]
-#         print(f"Button press detected: {label}")
-#         if label == "A":
-#             print("Disabling WiFi (wlan0 down)...")
-#             os.system("sudo ifconfig wlan0 down")
-#         elif label == "B":
-#             print("Enabling WiFi (wlan0 up)...")
-#             os.system("sudo ifconfig wlan0 up")
-#         elif label == "C":
-#             with image_lock:
-#                 image_index["idx"] -= 2
-#                 print("Previous image requested.")
-#                 image_update_event.set()
-#         elif label == "D":
-#             with image_lock:
-#                 print("Next image requested.")
-#                 image_update_event.set()
+    def handle_button(event):
+        index = OFFSETS.index(event.line_offset)
+        label = LABELS[index]
+        print(f"Button press detected: {label}")
+        if label == "A":
+            print("Disabling WiFi (wlan0 down)...")
+            os.system("sudo ifconfig wlan0 down")
+        elif label == "B":
+            print("Enabling WiFi (wlan0 up)...")
+            os.system("sudo ifconfig wlan0 up")
+        elif label == "C":
+            with image_lock:
+                image_index["idx"] -= 2
+                print("Previous image requested.")
+                image_update_event.set()
+        elif label == "D":
+            with image_lock:
+                print("Next image requested.")
+                image_update_event.set()
 
-#     def button_event_thread():
-#         while True:
-#             for event in request.read_edge_events():
-#                 handle_button(event)
-#     threading.Thread(target=button_event_thread, daemon=True).start()
+    def button_event_thread():
+        while True:
+            for event in request.read_edge_events():
+                handle_button(event)
+    threading.Thread(target=button_event_thread, daemon=True).start()
 
 def background_image_printer():
     if app.debug:
