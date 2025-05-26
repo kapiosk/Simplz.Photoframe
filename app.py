@@ -36,6 +36,7 @@ request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
 # Shared index for image navigation
 image_index = {"idx": 0}
 image_lock = threading.Lock()
+image_update_event = threading.Event()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -124,10 +125,12 @@ def handle_button(event):
         with image_lock:
             image_index["idx"] -= 1
             print("Previous image requested.")
+            image_update_event.set()
     elif label == "D":
         with image_lock:
             image_index["idx"] += 1
             print("Next image requested.")
+            image_update_event.set()
 
 # Start button event thread
 def button_event_thread():
@@ -159,7 +162,9 @@ def background_image_printer():
                     image_index["idx"] = 0
         except Exception as e:
             print(f"[Photoframe] Error in background worker: {e}")
-        time.sleep(PRINT_INTERVAL)
+        # Wait for either the interval or a button event
+        image_update_event.wait(timeout=PRINT_INTERVAL)
+        image_update_event.clear()
 
 # Start background worker
 threading.Thread(target=background_image_printer, daemon=True).start()
