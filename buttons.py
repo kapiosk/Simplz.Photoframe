@@ -1,6 +1,7 @@
 import gpiod
 import gpiodevice
 from gpiod.line import Bias, Direction, Edge
+import os
 
 print(
     """buttons.py - Detect which button has been pressed
@@ -60,6 +61,12 @@ def handle_button(event):
     gpio_number = BUTTONS[index]
     label = LABELS[index]
     print(f"Button press detected on GPIO #{gpio_number} label: {label}")
+    if label == "A":
+        print("Disabling WiFi (wlan0 down)...")
+        os.system("sudo ifconfig wlan0 down")
+    elif label == "B":
+        print("Enabling WiFi (wlan0 up)...")
+        os.system("sudo ifconfig wlan0 up")
 
 
 while True:
