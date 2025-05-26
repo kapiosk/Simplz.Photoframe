@@ -101,17 +101,17 @@ class InkyImageDisplayer():
 # if not app.debug:
 
 # Button GPIOs (BCM numbering)
-SW_A = 5
-SW_B = 6
-SW_C = 25
-SW_D = 24
-BUTTONS = [SW_A, SW_B, SW_C, SW_D]
-LABELS = ["A", "B", "C", "D"]
-INPUT = gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.PULL_UP, edge_detection=Edge.FALLING)
-chip = gpiodevice.find_chip_by_platform()
-OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
-line_config = dict.fromkeys(OFFSETS, INPUT)
-request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
+# SW_A = 5
+# SW_B = 6
+# SW_C = 25
+# SW_D = 24
+# BUTTONS = [SW_A, SW_B, SW_C, SW_D]
+# LABELS = ["A", "B", "C", "D"]
+# INPUT = gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.PULL_UP, edge_detection=Edge.FALLING)
+# chip = gpiodevice.find_chip_by_platform()
+# OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
+# line_config = dict.fromkeys(OFFSETS, INPUT)
+# request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
 
 # def handle_button(event):
 #     index = OFFSETS.index(event.line_offset)
