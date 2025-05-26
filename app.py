@@ -12,7 +12,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.secret_key = os.environ.get('PHOTOFRAME_SECRET_KEY', 'change_this_secret')
 
 PHOTOFRAME_PASSWORD = os.environ.get('PHOTOFRAME_PASSWORD', 'changeme')
-PRINT_INTERVAL = int(os.environ.get('PHOTOFRAME_PRINT_INTERVAL', 10))
+PRINT_INTERVAL = int(os.environ.get('PHOTOFRAME_PRINT_INTERVAL', 60))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
