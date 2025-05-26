@@ -142,6 +142,7 @@ if not app.debug:
     import gpiod
     import gpiodevice
     from gpiod.line import Bias, Direction, Edge, Value
+    import time
     # Button GPIOs (BCM numbering)
     SW_A = 5
     SW_B = 6
@@ -150,7 +151,7 @@ if not app.debug:
     LED_PIN = 13
     BUTTONS = [SW_A, SW_B, SW_C, SW_D]
     LABELS = ["A", "B", "C", "D"]
-    INPUT = gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.PULL_UP, edge_detection=Edge.FALLING)
+    INPUT = gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.PULL_UP, edge_detection=Edge.BOTH)
     chip = gpiodevice.find_chip_by_platform()
     led = chip.line_offset_from_id(LED_PIN)
     gpio = chip.request_lines(consumer="inky", config={led: gpiod.LineSettings(direction=Direction.OUTPUT, bias=Bias.DISABLED)})
@@ -163,9 +164,30 @@ if not app.debug:
         label = LABELS[index]
         print(f"Button press detected: {label}")
         if label == "A":
-            print("Disabling WiFi (wlan0 down)...")
-            os.system("sudo ifconfig wlan0 down")
-            gpio.set_value(led, Value.INACTIVE)
+            # Check for long press (5 seconds)
+            if event.event_type == Edge.FALLING:
+                press_time = time.monotonic()
+                # Wait for rising edge or timeout
+                while True:
+                    evs = button_request.read_edge_events(timeout=0.1)
+                    for ev in evs:
+                        if ev.line_offset == event.line_offset and ev.event_type == Edge.RISING:
+                            duration = time.monotonic() - press_time
+                            if duration >= 5.0:
+                                print("A held for 5s, shutting down Pi...")
+                                os.system("sudo shutdown now")
+                                return
+                            else:
+                                print(f"A pressed for {duration:.2f}s (not long enough for shutdown)")
+                                return
+                    if time.monotonic() - press_time >= 5.0:
+                        print("A held for 5s, shutting down Pi...")
+                        os.system("sudo shutdown now")
+                        return
+            else:
+                print("Disabling WiFi (wlan0 down)...")
+                os.system("sudo ifconfig wlan0 down")
+                gpio.set_value(led, Value.INACTIVE)
         elif label == "B":
             print("Enabling WiFi (wlan0 up)...")
             os.system("sudo ifconfig wlan0 up")
