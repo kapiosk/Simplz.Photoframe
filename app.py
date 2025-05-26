@@ -1,8 +1,10 @@
 import os
 import threading
 import time
-import random
-from flask import Flask, render_template, request, redirect, url_for, session, abort
+import gpiod
+import gpiodevice
+from gpiod.line import Bias, Direction, Edge
+from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.utils import secure_filename
 from functools import wraps
 
@@ -17,6 +19,23 @@ PHOTOFRAME_PASSWORD = os.environ.get('PHOTOFRAME_PASSWORD', 'changeme')
 PRINT_INTERVAL = int(os.environ.get('PHOTOFRAME_PRINT_INTERVAL', 10))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Button GPIOs (BCM numbering)
+SW_A = 5
+SW_B = 6
+SW_C = 25
+SW_D = 24
+BUTTONS = [SW_A, SW_B, SW_C, SW_D]
+LABELS = ["A", "B", "C", "D"]
+INPUT = gpiod.LineSettings(direction=Direction.INPUT, bias=Bias.PULL_UP, edge_detection=Edge.FALLING)
+chip = gpiodevice.find_chip_by_platform()
+OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
+line_config = dict.fromkeys(OFFSETS, INPUT)
+request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
+
+# Shared index for image navigation
+image_index = {"idx": 0}
+image_lock = threading.Lock()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -91,22 +110,53 @@ class InkyImageDisplayer():
         self.inky.show()
         print(f"[Photoframe] Displayed image: {filename}")
 
+def handle_button(event):
+    index = OFFSETS.index(event.line_offset)
+    label = LABELS[index]
+    print(f"Button press detected: {label}")
+    if label == "A":
+        print("Disabling WiFi (wlan0 down)...")
+        os.system("sudo ifconfig wlan0 down")
+    elif label == "B":
+        print("Enabling WiFi (wlan0 up)...")
+        os.system("sudo ifconfig wlan0 up")
+    elif label == "C":
+        with image_lock:
+            image_index["idx"] -= 1
+            print("Previous image requested.")
+    elif label == "D":
+        with image_lock:
+            image_index["idx"] += 1
+            print("Next image requested.")
+
+# Start button event thread
+def button_event_thread():
+    while True:
+        for event in request.read_edge_events():
+            handle_button(event)
+threading.Thread(target=button_event_thread, daemon=True).start()
+
 def background_image_printer():
-    # Choose display method based on debug mode
     if app.debug:
         displayer = PrintImageDisplayer()
     else:
         displayer = InkyImageDisplayer()
     while True:
         try:
-            images = os.listdir(UPLOAD_FOLDER)
-            images = [img for img in images if allowed_file(img)]
-            if images:
-                filename = random.choice(images)
-                image_path = os.path.join(UPLOAD_FOLDER, filename)
-                displayer.display(image_path, filename)
-            else:
-                print("[Photoframe] No images found in uploads folder.")
+            images = [img for img in os.listdir(UPLOAD_FOLDER) if allowed_file(img)]
+            images.sort()
+            with image_lock:
+                if images:
+                    # Clamp index to valid range
+                    image_index["idx"] %= len(images)
+                    filename = images[image_index["idx"]]
+                    image_path = os.path.join(UPLOAD_FOLDER, filename)
+                    displayer.display(image_path, filename)
+                    # Only auto-advance if not just changed by button
+                    image_index["idx"] = (image_index["idx"] + 1) % len(images)
+                else:
+                    print("[Photoframe] No images found in uploads folder.")
+                    image_index["idx"] = 0
         except Exception as e:
             print(f"[Photoframe] Error in background worker: {e}")
         time.sleep(PRINT_INTERVAL)
