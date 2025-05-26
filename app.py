@@ -133,11 +133,11 @@ def handle_button(event):
             print("Next image requested.")
             image_update_event.set()
 
-def button_event_thread():
-    while True:
-        for event in request.read_edge_events():
-            handle_button(event)
-threading.Thread(target=button_event_thread, daemon=True).start()
+# def button_event_thread():
+#     while True:
+#         for event in request.read_edge_events():
+#             handle_button(event)
+# threading.Thread(target=button_event_thread, daemon=True).start()
 
 def background_image_printer():
     if app.debug:
