@@ -111,7 +111,6 @@ if not app.debug:
     chip = gpiodevice.find_chip_by_platform()
     led = chip.line_offset_from_id(LED_PIN)
     gpio = chip.request_lines(consumer="inky", config={led: gpiod.LineSettings(direction=Direction.OUTPUT, bias=Bias.DISABLED)})
-    gpio.set_value(led, Value.ACTIVE)
     OFFSETS = [chip.line_offset_from_id(id) for id in BUTTONS]
     line_config = dict.fromkeys(OFFSETS, INPUT)
     button_request = chip.request_lines(consumer="photoframe-buttons", config=line_config)
@@ -123,9 +122,11 @@ if not app.debug:
         if label == "A":
             print("Disabling WiFi (wlan0 down)...")
             os.system("sudo ifconfig wlan0 down")
+            gpio.set_value(led, Value.INACTIVE)
         elif label == "B":
             print("Enabling WiFi (wlan0 up)...")
             os.system("sudo ifconfig wlan0 up")
+            gpio.set_value(led, Value.ACTIVE)
         elif label == "C":
             with image_lock:
                 image_index["idx"] -= 2
