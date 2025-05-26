@@ -5,8 +5,6 @@ import random
 from flask import Flask, render_template, request, redirect, url_for, session, abort
 from werkzeug.utils import secure_filename
 from functools import wraps
-from PIL import Image
-from inky.auto import auto
 
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -72,9 +70,33 @@ def delete_file(filename):
         os.remove(path)
     return redirect(url_for('index'))
 
+class PrintImageDisplayer():
+    def display(self, image_path, filename):
+        print(f"[Photoframe] Would display image: {filename}")
+
+class InkyImageDisplayer():
+    def __init__(self):
+        from inky.auto import auto
+        self.inky = auto(ask_user=True, verbose=True)
+        self.saturation = float(os.environ.get('PHOTOFRAME_SATURATION', 0.5))
+        from PIL import Image
+        self.Image = Image
+    def display(self, image_path, filename):
+        image = self.Image.open(image_path)
+        resizedimage = image.resize(self.inky.resolution)
+        try:
+            self.inky.set_image(resizedimage, saturation=self.saturation)
+        except TypeError:
+            self.inky.set_image(resizedimage)
+        self.inky.show()
+        print(f"[Photoframe] Displayed image: {filename}")
+
 def background_image_printer():
-    inky = auto(ask_user=True, verbose=True)
-    saturation = float(os.environ.get('PHOTOFRAME_SATURATION', 0.5))
+    # Choose display method based on debug mode
+    if app.debug:
+        displayer = PrintImageDisplayer()
+    else:
+        displayer = InkyImageDisplayer()
     while True:
         try:
             images = os.listdir(UPLOAD_FOLDER)
@@ -82,14 +104,7 @@ def background_image_printer():
             if images:
                 filename = random.choice(images)
                 image_path = os.path.join(UPLOAD_FOLDER, filename)
-                image = Image.open(image_path)
-                resizedimage = image.resize(inky.resolution)
-                try:
-                    inky.set_image(resizedimage, saturation=saturation)
-                except TypeError:
-                    inky.set_image(resizedimage)
-                inky.show()
-                print(f"[Photoframe] Displayed image: {filename}")
+                displayer.display(image_path, filename)
             else:
                 print("[Photoframe] No images found in uploads folder.")
         except Exception as e:
